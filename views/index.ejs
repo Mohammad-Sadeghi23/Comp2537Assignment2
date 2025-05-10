@@ -1,0 +1,13 @@
+<%- include("templates/header") %>
+
+<% if (!user) { %>
+  <h2 class="text-2xl font-semibold mb-4">Welcome to the Web App</h2>
+  <p class="mb-4">Please sign up or log in to continue.</p>
+  <a href="/signup" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Sign Up</a>
+  <a href="/login" class="ml-2 text-indigo-600 hover:underline">Log In</a>
+<% } else { %>
+  <h2 class="text-2xl font-semibold mb-4">Hello, <%= user.name %>!</h2>
+  <p class="mb-4">Welcome back. Use the navigation to access your pages.</p>
+<% } %>
+
+<%- include("templates/footer") %>

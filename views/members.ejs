@@ -1,0 +1,13 @@
+<%- include("templates/header") %>
+
+<h2 class="text-xl font-semibold mb-6">Welcome, <%= user.name %>!</h2>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+  <% images.forEach(img => { %>
+    <div>
+      <img src="<%= img %>" alt="Member Image" class="w-full h-64 object-cover rounded shadow">
+    </div>
+  <% }); %>
+</div>
+
+<%- include("templates/footer") %>
