@@ -59,10 +59,11 @@ function adminOnly(req, res, next) {
   if (!req.session.user) {
     return res.redirect('/login');
   }
-  if (req.session.user.user_type !== 'admin') {
-    return res.status(404).render('404', { user: req.session.user, message: 'Access denied. Admins only.' });
+  if (req.session.user.user_type === 'admin') {
+    return next();
+  } else {
+    return res.status(403).render('403', { code: 403, user: req.session.user, message: 'Access denied.' });
   }
-  next();
 }
 
 // Routes
@@ -161,7 +162,7 @@ app.get('/demote/:email', adminOnly, async (req, res) => {
 
 // 404 Page (Catch-all)
 app.use((req, res) => {
-  res.status(404).render('404', { user: req.session.user, url: req.originalUrl, message: 'Page not found.' });
+  res.status(404).render('404', { code: 404, user: req.session.user, url: req.originalUrl, message: 'Page not found.' });
 });
 
 // Start Server
