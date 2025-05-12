@@ -27,7 +27,7 @@ var { database } = require("./databaseConnection");
 const usersCollection = database.db(MONGODB_DATABASE).collection("users");
 
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + "/public"));
 
 // creates sessoins database in MongoDB to store sessions
 // and uses the session secret to encrypt the session data
@@ -50,44 +50,51 @@ app.use(
 // Middleware functions
 function auth(req, res, next) {
   if (!req.session.user) {
-    return res.redirect('/login');
+    return res.redirect("/login");
   }
   next();
 }
 
 function adminOnly(req, res, next) {
   if (!req.session.user) {
-    return res.redirect('/login');
+    return res.redirect("/login");
   }
-  if (req.session.user.user_type === 'admin') {
+  if (req.session.user.user_type === "admin") {
     return next();
   } else {
-    return res.status(403).render('403', { code: 403, user: req.session.user, message: 'Access denied.' });
+    return res.status(403).render("404", {
+      code: 403,
+      user: req.session.user,
+      message: "Access denied.",
+    });
   }
 }
 
 // Routes
 
 // Home Page
-app.get('/', (req, res) => {
-  res.render('index', { user: req.session.user });
+app.get("/", (req, res) => {
+  res.render("index", { user: req.session.user });
 });
 
 // Sign Up Page
-app.get('/signup', (req, res) => {
-  res.render('signup', { error: null, user: req.session.user });
+app.get("/signup", (req, res) => {
+  res.render("signup", { error: null, user: req.session.user });
 });
 
-app.post('/signup', async (req, res) => {
+app.post("/signup", async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().required(),
     email: Joi.string().email().required(),
-    password: Joi.string().required()
+    password: Joi.string().required(),
   });
 
   const { error } = schema.validate(req.body);
   if (error) {
-    return res.status(400).render('signup', { error: 'All fields are required and must be valid.', user: null });
+    return res.status(400).render("signup", {
+      error: "All fields are required and must be valid.",
+      user: null,
+    });
   }
 
   const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -95,74 +102,106 @@ app.post('/signup', async (req, res) => {
     name: req.body.name,
     email: req.body.email,
     password: hashedPassword,
-    user_type: 'user'
+    user_type: "user",
   };
 
   await usersCollection.insertOne(newUser);
   req.session.user = {
-  name: newUser.username,
-  email: newUser.email,
-  user_type: newUser.user_type
-};
+    name: newUser.username,
+    email: newUser.email,
+    user_type: newUser.user_type,
+  };
 
-  res.redirect('/members');
+  res.redirect("/members");
 });
 
 // Log In Page
-app.get('/login', (req, res) => {
-  res.render('login', { error: null, user: req.session.user });
+app.get("/login", (req, res) => {
+  res.render("login", { error: null, user: req.session.user });
 });
 
-app.post('/login', async (req, res) => {
+app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   const user = await usersCollection.findOne({ email });
   if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).render('login', { error: 'Invalid email or password.', user: null });
+    return res
+      .status(401)
+      .render("login", { error: "Invalid email or password.", user: null });
   }
 
   req.session.user = {
-  name: user.username,
-  email: user.email,
-  user_type: user.user_type
-};
+    name: user.username,
+    email: user.email,
+    user_type: user.user_type,
+  };
 
-  res.redirect('/members');
+  res.redirect("/members");
 });
 
 // Logout
-app.get('/logout', (req, res) => {
+app.get("/logout", (req, res) => {
   req.session.destroy();
-  res.redirect('/');
+  res.redirect("/");
 });
 
 // Members Page (Authorized)
-app.get('/members', auth, (req, res) => {
-  const images = ['golestan.jpg', 'isfahan.jpg', 'mosque.jpg'];
-  res.render('members', { user: req.session.user, images });
+app.get("/members", auth, (req, res) => {
+  const images = ["golestan.jpg", "isfahan.jpg", "mosque.jpg"];
+  res.render("members", { user: req.session.user, images });
 });
 
 // Admin Page (Admins Only)
-app.get('/admin', adminOnly, async (req, res) => {
+app.get("/admin", adminOnly, async (req, res) => {
   const users = await usersCollection.find().toArray();
-  res.render('admin', { user: req.session.user, users });
+  res.render("admin", { user: req.session.user, users });
 });
 
 // Promote User to Admin
-app.get('/promote/:email', adminOnly, async (req, res) => {
-  await usersCollection.updateOne({ email: req.params.email }, { $set: { user_type: 'admin' } });
-  res.redirect('/admin');
+app.get("/promote/:email", adminOnly, async (req, res) => {
+  // Redired to 404 page if the user is not found
+  const user = await usersCollection.findOne({ email: req.params.email });
+  if (!user) {
+    return res.status(404).render("404", {
+      code: 404,
+      user: req.session.user,
+      message: "User not found.",
+    });
+  }
+  await usersCollection.updateOne(
+    { email: req.params.email },
+    { $set: { user_type: "admin" } }
+  );
+
+  res.redirect("/admin");
 });
 
 // Demote Admin to User
-app.get('/demote/:email', adminOnly, async (req, res) => {
-  await usersCollection.updateOne({ email: req.params.email }, { $set: { user_type: 'user' } });
-  res.redirect('/admin');
+app.get("/demote/:email", adminOnly, async (req, res) => {
+  // Redired to 404 page if the user is not found
+  const user = await usersCollection.findOne({ email: req.params.email });
+  if (!user) {
+    return res.status(404).render("404", {
+      code: 404,
+      user: req.session.user,
+      message: "User not found.",
+    });
+  }
+  await usersCollection.updateOne(
+    { email: req.params.email },
+    { $set: { user_type: "user" } }
+  );
+
+  res.redirect("/admin");
 });
 
 // 404 Page (Catch-all)
 app.use((req, res) => {
-  res.status(404).render('404', { code: 404, user: req.session.user, url: req.originalUrl, message: 'Page not found.' });
+  res.status(404).render("404", {
+    code: 404,
+    user: req.session.user,
+    message: "Page not found.",
+  });
 });
 
 // Start Server
