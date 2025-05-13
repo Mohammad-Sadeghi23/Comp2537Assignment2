@@ -10,7 +10,7 @@ const app = express();
 
 app.set("view engine", "ejs");
 
-const expireTime = 1 * 60 * 1000; //expires after 1 hour  (hours * minutes * seconds * millis)
+const expireTime = 60 * 60 * 1000; //expires after 1 hour  (hours * minutes * seconds * millis)
 
 const port = process.env.PORT || 3000;
 
@@ -44,31 +44,34 @@ app.use(
     store: mongoStore, // store session data in MongoDB
     saveUninitialized: false,
     resave: true,
+    cookie: { maxAge: expireTime },
   })
 );
 
 // Middleware functions
 function auth(req, res, next) {
-  if (!req.session.user) {
+  if (!req.session.authenticated) {
     return res.redirect("/login");
   }
   next();
 }
 
 function adminOnly(req, res, next) {
-  if (!req.session.user) {
+
+  if (!req.session.authenticated) {
     return res.redirect("/login");
   }
-  if (req.session.user.user_type === "admin") {
-    return next();
-  } else {
+
+  if (req.session.user?.user_type !== "admin") {
     return res.status(403).render("404", {
       code: 403,
       user: req.session.user,
       message: "Access denied.",
     });
   }
+  next();
 }
+
 
 // Routes
 
@@ -107,10 +110,12 @@ app.post("/signup", async (req, res) => {
 
   await usersCollection.insertOne(newUser);
   req.session.user = {
-    name: newUser.username,
+    name: newUser.name,
     email: newUser.email,
     user_type: newUser.user_type,
   };
+
+  req.session.authenticated = true;
 
   res.redirect("/members");
 });
@@ -130,11 +135,13 @@ app.post("/login", async (req, res) => {
       .render("login", { error: "Invalid email or password.", user: null });
   }
 
+  req.session.authenticated = true;
+
   req.session.user = {
-    name: user.username,
-    email: user.email,
-    user_type: user.user_type,
-  };
+  name: user.name,
+  email: user.email,
+  user_type: user.user_type,
+};
 
   res.redirect("/members");
 });
